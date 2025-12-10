@@ -13,7 +13,8 @@ export default async function handler(request, response) {
   }
 
   try {
-    const { imageBase64 } = await request.json();
+    // Di Vercel Serverless (Node.js), gunakan request.body langsung
+    const { imageBase64 } = request.body;
     
     const ai = new GoogleGenAI({ apiKey: apiKey });
 

@@ -4,16 +4,22 @@ export default async function handler(request, response) {
   }
 
   try {
-    const { password } = await request.json();
+    // Di Vercel Serverless (Node.js), gunakan request.body langsung, bukan request.json()
+    const { password } = request.body;
+    
     // Ambil password dari Environment Variable Vercel
     const correctPassword = process.env.VITE_APP_PASSWORD || "1234";
 
-    if (password === correctPassword) {
+    // Debugging (Opsional: Hapus ini nanti jika sudah jalan)
+    // console.log("Input:", password, "Correct:", correctPassword);
+
+    if (String(password) === String(correctPassword)) {
       return response.status(200).json({ success: true });
     } else {
       return response.status(401).json({ success: false, error: 'Password salah' });
     }
   } catch (error) {
+    console.error("Auth Error:", error);
     return response.status(500).json({ error: 'Server error' });
   }
 }
