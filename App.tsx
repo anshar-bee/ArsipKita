@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Archive, Sun, Moon, Calendar, Loader2, Lock, ArrowRight, KeyRound } from 'lucide-react';
+import { Plus, Search, Archive, Sun, Moon, Calendar, Loader2, Lock, ArrowRight, KeyRound, LogOut } from 'lucide-react';
 import { PhotoCard } from './components/PhotoCard';
 import { AddMemoryModal } from './components/AddMemoryModal';
 import { ConfirmModal } from './components/ConfirmModal';
@@ -251,9 +251,10 @@ function App() {
       <header className="fixed top-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-40 border-b border-gray-200/50 dark:border-slate-700/50 shadow-sm transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={handleLogout} className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-2 rounded-lg transition-colors hover:scale-105 active:scale-95" title="Keluar">
+            {/* Logo Wrapper (was logout button) */}
+            <div className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-2 rounded-lg shadow-sm">
                <Archive size={20} />
-            </button>
+            </div>
             <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-gray-100 tracking-wide transition-colors hidden sm:block">Arsip Kita</h1>
             <h1 className="text-2xl font-display font-bold text-gray-800 dark:text-gray-100 tracking-wide transition-colors sm:hidden">Arsip</h1>
           </div>
@@ -278,6 +279,15 @@ function App() {
               title={isDarkMode ? "Mode Siang" : "Mode Malam"}
             >
               {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+
+            {/* Logout Button */}
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              title="Keluar"
+            >
+              <LogOut size={20} />
             </button>
 
             <button 
