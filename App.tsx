@@ -3,6 +3,7 @@ import { Plus, Search, Archive, Sun, Moon, Calendar, Loader2, Lock, ArrowRight, 
 import { PhotoCard } from './components/PhotoCard';
 import { AddMemoryModal } from './components/AddMemoryModal';
 import { ConfirmModal } from './components/ConfirmModal';
+import { MemoryViewer } from './components/MemoryViewer';
 import { Memory } from './types';
 import { api } from './services/api';
 
@@ -20,6 +21,7 @@ function App() {
   // App State
   const [memories, setMemories] = useState<Memory[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null); // State for expanded view
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -330,6 +332,7 @@ function App() {
                   key={memory.id} 
                   memory={memory} 
                   onDelete={handleDeleteClick}
+                  onView={setSelectedMemory}
                 />
               ))}
             </div>
@@ -341,6 +344,14 @@ function App() {
       <div className="fixed bottom-4 left-4 font-script text-gray-300 dark:text-slate-700 text-sm select-none z-0 transition-colors">
         est. 2023
       </div>
+
+      {/* Modals rendered at root level to avoid z-index issues with Header */}
+      {selectedMemory && (
+        <MemoryViewer 
+          memory={selectedMemory} 
+          onClose={() => setSelectedMemory(null)} 
+        />
+      )}
 
       <AddMemoryModal 
         isOpen={isModalOpen} 
