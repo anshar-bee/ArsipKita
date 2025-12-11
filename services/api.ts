@@ -1,18 +1,24 @@
 import { Memory } from '../types';
 
 // ============================================================================================
-// INSTRUKSI UPDATE BACKEND (PENTING!)
+// INSTRUKSI UPDATE BACKEND (PENTING! VERSI GOOGLE DRIVE)
 // ============================================================================================
-// Agar fitur EDIT berfungsi, Anda HARUS mengupdate kode di Google Apps Script.
-// 1. Buka Google Sheet database Anda.
-// 2. Klik Extensions > Apps Script.
-// 3. Ganti seluruh kode yang ada dengan kode di bawah ini.
-// 4. Klik Deploy > New deployment.
-// 5. Pilih type 'Web app', description 'Update V2', execute as 'Me', access 'Anyone'.
-// 6. Klik Deploy dan pastikan URL Web App di variabel API_URL di bawah ini sesuai.
+// Agar gambar tersimpan di Google Drive (tidak rusak), ikuti langkah ini:
+// 1. Buat FOLDER BARU di Google Drive Anda (beri nama misal: "Database Arsip Kita").
+// 2. Buka folder tersebut, dan salin ID FOLDER dari URL browser.
+//    (Contoh URL: drive.google.com/drive/u/0/folders/1AbC-1234_xYz... -> ID-nya adalah "1AbC-1234_xYz...")
+// 3. Buka Extensions > Apps Script di Google Sheet.
+// 4. Hapus semua kode lama, dan paste kode di bawah ini.
+// 5. ISI variabel FOLDER_ID di baris paling atas dengan ID Folder yang Anda salin.
+// 6. Klik Deploy > New deployment > Web app > Execute as Me > Who has access: Anyone > Deploy.
+// 7. Saat Deploy, Google akan meminta izin akses Drive (Review Permissions). Izinkan.
+// 8. Copy URL Web App baru dan paste ke konstanta API_URL di bawah.
 
 /*
 // --- KODE GOOGLE APPS SCRIPT MULAI ---
+
+// !!! PENTING: GANTI INI DENGAN ID FOLDER GOOGLE DRIVE ANDA !!!
+var FOLDER_ID = "GANTI_DENGAN_ID_FOLDER_DRIVE_ANDA_DISINI"; 
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
@@ -24,27 +30,51 @@ function doPost(e) {
     var action = data.action;
 
     if (action === 'create') {
-      // Menambah data baru
+      // 1. Decode gambar dari Base64
+      var imageBlob = Utilities.newBlob(Utilities.base64Decode(data.imageBase64), MimeType.JPEG, data.title);
+      
+      // 2. Simpan ke Google Drive
+      var folder = DriveApp.getFolderById(FOLDER_ID);
+      var file = folder.createFile(imageBlob);
+      
+      // 3. Atur agar file bisa dilihat publik (supaya bisa tampil di web)
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      
+      // 4. Ambil Direct Link untuk gambar
+      // Menggunakan format uc?export=view agar bisa dirender sebagai gambar
+      var fileUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
+
+      // 5. Simpan URL ke Spreadsheet (Bukan base64 lagi, jadi hemat tempat & tidak error)
       sheet.appendRow([
         data.id,
         data.date,
         data.title,
         data.description,
-        data.imageBase64,
+        fileUrl,            // Kolom E sekarang menyimpan URL Drive
         data.rotation || 0,
         data.swayClass || ''
       ]);
+      
       return ContentService.createTextOutput(JSON.stringify({ status: 'success', action: 'create' })).setMimeType(ContentService.MimeType.JSON);
     } 
     
     else if (action === 'delete') {
-      // Menghapus data berdasarkan ID
       var rows = sheet.getDataRange().getValues();
       var deleteId = data.id;
       
-      // Loop dari bawah untuk menghindari indeks bergeser saat delete
       for (var i = rows.length - 1; i >= 0; i--) {
         if (rows[i][0].toString() == deleteId.toString()) {
+          // Opsional: Hapus juga file dari Drive untuk menghemat ruang
+          try {
+            var fileUrl = rows[i][4];
+            if (fileUrl.indexOf("id=") > -1) {
+              var fileId = fileUrl.split("id=")[1];
+              DriveApp.getFileById(fileId).setTrashed(true);
+            }
+          } catch(err) {
+            // Abaikan jika gagal hapus file di drive (mungkin format lama)
+          }
+
           sheet.deleteRow(i + 1);
           return ContentService.createTextOutput(JSON.stringify({ status: 'success', action: 'delete' })).setMimeType(ContentService.MimeType.JSON);
         }
@@ -53,43 +83,17 @@ function doPost(e) {
     }
 
     else if (action === 'update') {
-      // Update data (Title & Description) berdasarkan ID
       var rows = sheet.getDataRange().getValues();
       var updateId = data.id;
       
       for (var i = 0; i < rows.length; i++) {
         if (rows[i][0].toString() == updateId.toString()) {
-          // Kolom ke-3 adalah Title (index 2), Kolom ke-4 adalah Description (index 3)
-          // Baris di sheet dimulai dari 1, array dimulai dari 0. Jadi row i+1.
-          
-          // Update Title
           sheet.getRange(i + 1, 3).setValue(data.title);
-          // Update Description
           sheet.getRange(i + 1, 4).setValue(data.description);
-          
           return ContentService.createTextOutput(JSON.stringify({ status: 'success', action: 'update' })).setMimeType(ContentService.MimeType.JSON);
         }
       }
       return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'ID not found' })).setMimeType(ContentService.MimeType.JSON);
-    }
-
-    else if (action === 'read') {
-      // Membaca semua data (biasanya via doGet, tapi doPost juga bisa jika diperlukan)
-      var rows = sheet.getDataRange().getValues();
-      var result = [];
-      // Skip header row if exists, or adjust loop
-      for (var i = 1; i < rows.length; i++) {
-        result.push({
-          id: rows[i][0],
-          date: rows[i][1],
-          title: rows[i][2],
-          description: rows[i][3],
-          imageUrl: "data:image/jpeg;base64," + rows[i][4],
-          rotation: rows[i][5],
-          swayClass: rows[i][6]
-        });
-      }
-      return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
     }
 
   } catch (e) {
@@ -100,25 +104,28 @@ function doPost(e) {
 }
 
 function doGet(e) {
-  // Setup untuk mengambil data (Fetch)
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   var rows = sheet.getDataRange().getValues();
   var result = [];
   
-  // Asumsi baris 1 adalah Header, data mulai dari baris 2 (index 1)
   for (var i = 1; i < rows.length; i++) {
-    // Validasi data minimal punya ID
     if(rows[i][0]) {
-      // Konstruksi image URL dengan pengecekan aman
-      var base64Data = rows[i][4] ? rows[i][4].toString() : "";
-      var imgUrl = base64Data ? ("data:image/jpeg;base64," + base64Data) : "";
+      var imgData = rows[i][4];
+      var finalImg = "";
       
+      // Cek apakah data lama (Base64 panjang) atau data baru (URL Drive)
+      if (imgData.toString().startsWith("http")) {
+        finalImg = imgData; // Sudah URL
+      } else if (imgData.toString().length > 0) {
+        finalImg = "data:image/jpeg;base64," + imgData; // Format lama (Base64)
+      }
+
       result.push({
         id: rows[i][0],
         date: rows[i][1],
         title: rows[i][2],
         description: rows[i][3],
-        imageUrl: imgUrl,
+        imageUrl: finalImg,
         rotation: rows[i][5],
         swayClass: rows[i][6]
       });
@@ -127,12 +134,11 @@ function doGet(e) {
   
   return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
 }
-
 // --- KODE SELESAI ---
 */
 
 // GANTI URL INI DENGAN URL DEPLOYMENT GOOGLE APPS SCRIPT ANDA
-const API_URL = "https://script.google.com/macros/s/AKfycbw-S1uvKSJz9fgug-h8hBR_fyADYEW7H6JKL4XDG5f22i4fmSBqI5iJa91pO6PyD0Jd/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbx1WrMtih5BDZp0fwBBhawaxb2KmksSGLeoG9mkuu2ioJ6sjhwc9jCcfuzQRywLchss/exec";
 
 export const api = {
   fetchMemories: async (): Promise<Memory[]> => {
@@ -141,13 +147,13 @@ export const api = {
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       
-      // Validation to ensure no broken images pass through
+      // Filter data valid.
+      // Kita turunkan batas length check ke 20 karena URL Drive lebih pendek dari Base64
       const validData = data.filter((m: any) => {
-        const hasValidImage = m.imageUrl && m.imageUrl.length > 50 && !m.imageUrl.includes('base64,undefined') && !m.imageUrl.includes('base64,null');
+        const hasValidImage = m.imageUrl && m.imageUrl.length > 20 && !m.imageUrl.includes('undefined');
         return m.id && hasValidImage;
       });
 
-      // Sort by date descending (newest first)
       return validData.sort((a: Memory, b: Memory) => new Date(b.date).getTime() - new Date(a.date).getTime());
     } catch (error) {
       console.error("Error fetching memories:", error);
@@ -162,7 +168,6 @@ export const api = {
         ...memory
       };
 
-      // Explicitly use text/plain to avoid CORS preflight issues on GAS
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
@@ -188,7 +193,6 @@ export const api = {
         description: description
       };
 
-      // Explicitly use text/plain to avoid CORS preflight issues on GAS
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
@@ -212,7 +216,6 @@ export const api = {
         id: id
       };
 
-      // Explicitly use text/plain to avoid CORS preflight issues on GAS
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
