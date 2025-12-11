@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Memory } from '../types';
-import { Maximize2, X, Pencil } from 'lucide-react';
+import { Maximize2, X, Pencil, ImageOff } from 'lucide-react';
 
 interface PhotoCardProps {
   memory: Memory;
@@ -11,6 +11,7 @@ interface PhotoCardProps {
 
 export const PhotoCard: React.FC<PhotoCardProps> = ({ memory, onDelete, onView, onEdit }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   const cardClass = `relative inline-block m-2 md:m-3 transition-transform duration-300 ease-out hover:scale-105 hover:z-10 ${memory.swayClass || ''}`;
 
@@ -27,15 +28,24 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ memory, onDelete, onView, 
       {/* Reduced padding (p-2) and width (w-[180px] to w-[220px]) */}
       <div className="paper-texture p-2 pb-6 shadow-lg transition-shadow duration-300 hover:shadow-2xl w-[180px] md:w-[200px] lg:w-[220px]">
         <div 
-          className="relative aspect-square w-full overflow-hidden bg-gray-100 dark:bg-slate-800 mb-3 border border-gray-200/50 dark:border-slate-700/50 cursor-pointer"
+          className="relative aspect-square w-full overflow-hidden bg-gray-100 dark:bg-slate-800 mb-3 border border-gray-200/50 dark:border-slate-700/50 cursor-pointer group"
           onClick={() => onView(memory)}
         >
-          <img 
-            src={memory.imageUrl} 
-            alt={memory.title} 
-            className="w-full h-full object-cover sepia-[.15] contrast-[.95] brightness-[1.05]"
-            loading="lazy"
-          />
+          {!imgError ? (
+            <img 
+              src={memory.imageUrl} 
+              alt={memory.title} 
+              className="w-full h-full object-cover sepia-[.15] contrast-[.95] brightness-[1.05]"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-slate-800 text-gray-400 p-4 text-center">
+              <ImageOff size={24} className="mb-2 opacity-50" />
+              <span className="text-xs font-hand">Gambar tidak tersedia</span>
+            </div>
+          )}
           
           {/* Actions Overlay */}
           <div className={`absolute inset-0 bg-black/10 dark:bg-black/30 transition-opacity duration-300 flex items-center justify-center gap-2 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>

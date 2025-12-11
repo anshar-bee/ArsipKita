@@ -19,6 +19,7 @@ export const MemoryViewer: React.FC<MemoryViewerProps> = ({ memory, onClose }) =
             src={memory.imageUrl} 
             alt={memory.title} 
             className="w-full h-full object-contain"
+            referrerPolicy="no-referrer"
           />
         </div>
         <div className="px-2 text-center">

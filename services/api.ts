@@ -1,18 +1,17 @@
 import { Memory } from '../types';
 
 // ============================================================================================
-// INSTRUKSI UPDATE BACKEND (PENTING! VERSI GOOGLE DRIVE)
+// INSTRUKSI UPDATE BACKEND (PENTING! VERSI GOOGLE DRIVE V2)
 // ============================================================================================
-// Agar gambar tersimpan di Google Drive (tidak rusak), ikuti langkah ini:
+// Agar gambar muncul dan tidak rusak, gunakan format URL 'thumbnail' di kode Apps Script.
+// 
 // 1. Buat FOLDER BARU di Google Drive Anda (beri nama misal: "Database Arsip Kita").
-// 2. Buka folder tersebut, dan salin ID FOLDER dari URL browser.
-//    (Contoh URL: drive.google.com/drive/u/0/folders/1AbC-1234_xYz... -> ID-nya adalah "1AbC-1234_xYz...")
+// 2. Buka folder tersebut, salin ID FOLDER dari URL browser (bagian acak di akhir URL).
 // 3. Buka Extensions > Apps Script di Google Sheet.
-// 4. Hapus semua kode lama, dan paste kode di bawah ini.
-// 5. ISI variabel FOLDER_ID di baris paling atas dengan ID Folder yang Anda salin.
+// 4. Hapus kode lama, paste kode di bawah ini.
+// 5. ISI variabel FOLDER_ID di baris paling atas dengan ID Folder Anda.
 // 6. Klik Deploy > New deployment > Web app > Execute as Me > Who has access: Anyone > Deploy.
-// 7. Saat Deploy, Google akan meminta izin akses Drive (Review Permissions). Izinkan.
-// 8. Copy URL Web App baru dan paste ke konstanta API_URL di bawah.
+// 7. Copy URL Web App baru dan paste ke konstanta API_URL di bawah.
 
 /*
 // --- KODE GOOGLE APPS SCRIPT MULAI ---
@@ -37,20 +36,20 @@ function doPost(e) {
       var folder = DriveApp.getFolderById(FOLDER_ID);
       var file = folder.createFile(imageBlob);
       
-      // 3. Atur agar file bisa dilihat publik (supaya bisa tampil di web)
+      // 3. Atur agar file bisa dilihat publik
       file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       
-      // 4. Ambil Direct Link untuk gambar
-      // Menggunakan format uc?export=view agar bisa dirender sebagai gambar
-      var fileUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
+      // 4. Ambil Link Gambar (Gunakan format Thumbnail agar lebih cepat & stabil di Web)
+      // Format: https://drive.google.com/thumbnail?sz=w1000&id={FILE_ID}
+      var fileUrl = "https://drive.google.com/thumbnail?sz=w1000&id=" + file.getId();
 
-      // 5. Simpan URL ke Spreadsheet (Bukan base64 lagi, jadi hemat tempat & tidak error)
+      // 5. Simpan URL ke Spreadsheet
       sheet.appendRow([
         data.id,
         data.date,
         data.title,
         data.description,
-        fileUrl,            // Kolom E sekarang menyimpan URL Drive
+        fileUrl,            // Kolom E: URL Drive
         data.rotation || 0,
         data.swayClass || ''
       ]);
@@ -64,16 +63,16 @@ function doPost(e) {
       
       for (var i = rows.length - 1; i >= 0; i--) {
         if (rows[i][0].toString() == deleteId.toString()) {
-          // Opsional: Hapus juga file dari Drive untuk menghemat ruang
           try {
             var fileUrl = rows[i][4];
             if (fileUrl.indexOf("id=") > -1) {
               var fileId = fileUrl.split("id=")[1];
+              // Handle format thumbnail link juga
+              if (fileId.indexOf("&") > -1) fileId = fileId.split("&")[0];
+              
               DriveApp.getFileById(fileId).setTrashed(true);
             }
-          } catch(err) {
-            // Abaikan jika gagal hapus file di drive (mungkin format lama)
-          }
+          } catch(err) {}
 
           sheet.deleteRow(i + 1);
           return ContentService.createTextOutput(JSON.stringify({ status: 'success', action: 'delete' })).setMimeType(ContentService.MimeType.JSON);
@@ -113,11 +112,11 @@ function doGet(e) {
       var imgData = rows[i][4];
       var finalImg = "";
       
-      // Cek apakah data lama (Base64 panjang) atau data baru (URL Drive)
       if (imgData.toString().startsWith("http")) {
-        finalImg = imgData; // Sudah URL
+        finalImg = imgData; 
       } else if (imgData.toString().length > 0) {
-        finalImg = "data:image/jpeg;base64," + imgData; // Format lama (Base64)
+        // Fallback untuk data lama (Base64)
+        finalImg = "data:image/jpeg;base64," + imgData; 
       }
 
       result.push({
@@ -138,7 +137,7 @@ function doGet(e) {
 */
 
 // GANTI URL INI DENGAN URL DEPLOYMENT GOOGLE APPS SCRIPT ANDA
-const API_URL = "https://script.google.com/macros/s/AKfycbx1WrMtih5BDZp0fwBBhawaxb2KmksSGLeoG9mkuu2ioJ6sjhwc9jCcfuzQRywLchss/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxEQq_cn3xRr_0XzwZds4CH-MOu_1zR6QxPgagcde7IrMbyz2RUM6ouY52iAv1sTWKJ/exec";
 
 export const api = {
   fetchMemories: async (): Promise<Memory[]> => {
@@ -148,7 +147,6 @@ export const api = {
       const data = await response.json();
       
       // Filter data valid.
-      // Kita turunkan batas length check ke 20 karena URL Drive lebih pendek dari Base64
       const validData = data.filter((m: any) => {
         const hasValidImage = m.imageUrl && m.imageUrl.length > 20 && !m.imageUrl.includes('undefined');
         return m.id && hasValidImage;

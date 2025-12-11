@@ -9,7 +9,7 @@ import { Memory } from './types';
 import { api } from './services/api';
 
 const SWAY_CLASSES = ['sway-slow', 'sway-medium', 'sway-fast'];
-const MEMORIES_CACHE_KEY = 'arsip_memories_data'; // Key for localStorage caching
+const MEMORIES_CACHE_KEY = 'arsip_memories_data_v2'; // Changed Key to v2 to invalidate old broken cache
 
 function App() {
   // Auth State
@@ -74,7 +74,7 @@ function App() {
     try {
       const data = await api.fetchMemories();
       // Filter out invalid data (empty images) to prevent broken UI
-      const validData = data.filter(m => m.imageUrl && !m.imageUrl.includes('base64,undefined') && m.imageUrl.length > 50);
+      const validData = data.filter(m => m.imageUrl && !m.imageUrl.includes('base64,undefined') && m.imageUrl.length > 20);
       
       setMemories(validData);
       

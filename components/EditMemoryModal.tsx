@@ -54,6 +54,7 @@ export const EditMemoryModal: React.FC<EditMemoryModalProps> = ({ isOpen, onClos
                 src={memory.imageUrl} 
                 alt="Preview" 
                 className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
               />
             </div>
 
