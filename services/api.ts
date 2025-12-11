@@ -109,12 +109,16 @@ function doGet(e) {
   for (var i = 1; i < rows.length; i++) {
     // Validasi data minimal punya ID
     if(rows[i][0]) {
+      // Konstruksi image URL dengan pengecekan aman
+      var base64Data = rows[i][4] ? rows[i][4].toString() : "";
+      var imgUrl = base64Data ? ("data:image/jpeg;base64," + base64Data) : "";
+      
       result.push({
         id: rows[i][0],
         date: rows[i][1],
         title: rows[i][2],
         description: rows[i][3],
-        imageUrl: "data:image/jpeg;base64," + rows[i][4],
+        imageUrl: imgUrl,
         rotation: rows[i][5],
         swayClass: rows[i][6]
       });
@@ -136,8 +140,15 @@ export const api = {
       const response = await fetch(API_URL);
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
+      
+      // Validation to ensure no broken images pass through
+      const validData = data.filter((m: any) => {
+        const hasValidImage = m.imageUrl && m.imageUrl.length > 50 && !m.imageUrl.includes('base64,undefined') && !m.imageUrl.includes('base64,null');
+        return m.id && hasValidImage;
+      });
+
       // Sort by date descending (newest first)
-      return data.sort((a: Memory, b: Memory) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      return validData.sort((a: Memory, b: Memory) => new Date(b.date).getTime() - new Date(a.date).getTime());
     } catch (error) {
       console.error("Error fetching memories:", error);
       return [];

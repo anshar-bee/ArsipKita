@@ -73,8 +73,16 @@ function App() {
 
     try {
       const data = await api.fetchMemories();
-      setMemories(data);
-      localStorage.setItem(MEMORIES_CACHE_KEY, JSON.stringify(data));
+      // Filter out invalid data (empty images) to prevent broken UI
+      const validData = data.filter(m => m.imageUrl && !m.imageUrl.includes('base64,undefined') && m.imageUrl.length > 50);
+      
+      setMemories(validData);
+      
+      try {
+        localStorage.setItem(MEMORIES_CACHE_KEY, JSON.stringify(validData));
+      } catch (e) {
+        console.warn("LocalStorage full, skipping cache update");
+      }
     } catch (error) {
       console.error("Network fetch failed, relying on cache if available");
     } finally {
@@ -129,6 +137,10 @@ function App() {
     const rotation = Math.random() * 6 - 3;
     const swayClass = SWAY_CLASSES[Math.floor(Math.random() * SWAY_CLASSES.length)];
     
+    // Construct local object immediately for responsiveness
+    // Note: We don't add it to state immediately to avoid double entry when loadMemories runs, 
+    // but you could for even faster UI.
+    
     const success = await api.addMemory({
       ...newMemoryData,
       id: tempId,
@@ -152,20 +164,40 @@ function App() {
   const handleUpdateMemory = async (id: string, title: string, description: string) => {
     // Optimistic UI Update
     const oldMemories = [...memories];
-    const updatedMemories = memories.map(m => 
-      m.id === id ? { ...m, title, description } : m
-    );
+    
+    // Create updated list ensuring ImageURL is preserved strictly
+    const updatedMemories = memories.map(m => {
+      if (m.id === id) {
+        return { 
+          ...m, 
+          title, 
+          description,
+          // Explicitly preserve the image URL to prevent "broken image"
+          imageUrl: m.imageUrl 
+        };
+      }
+      return m;
+    });
     
     setMemories(updatedMemories);
-    localStorage.setItem(MEMORIES_CACHE_KEY, JSON.stringify(updatedMemories));
+    
+    // Try-catch block specifically for localStorage to prevent app crash if quota exceeded
+    try {
+      localStorage.setItem(MEMORIES_CACHE_KEY, JSON.stringify(updatedMemories));
+    } catch (e) {
+      console.warn("LocalStorage Update Failed (Quota):", e);
+      // We continue execution even if cache fails
+    }
 
     const success = await api.updateMemory(id, title, description);
     
     if (!success) {
       // Revert if API fails
       setMemories(oldMemories);
-      localStorage.setItem(MEMORIES_CACHE_KEY, JSON.stringify(oldMemories));
-      alert("Gagal memperbarui kenangan.");
+      try {
+        localStorage.setItem(MEMORIES_CACHE_KEY, JSON.stringify(oldMemories));
+      } catch (e) { /* ignore */ }
+      alert("Gagal memperbarui kenangan. Pastikan Anda telah melakukan 'New Deployment' pada Google Apps Script.");
     }
   };
   // -------------------------
@@ -180,14 +212,21 @@ function App() {
       const newMemories = memories.filter(m => m.id !== deleteId);
       
       setMemories(newMemories);
-      localStorage.setItem(MEMORIES_CACHE_KEY, JSON.stringify(newMemories));
+      
+      try {
+        localStorage.setItem(MEMORIES_CACHE_KEY, JSON.stringify(newMemories));
+      } catch (e) {
+         console.warn("LocalStorage Update Failed (Quota):", e);
+      }
       
       setDeleteId(null);
 
       const success = await api.deleteMemory(deleteId);
       if (!success) {
         setMemories(previousMemories);
-        localStorage.setItem(MEMORIES_CACHE_KEY, JSON.stringify(previousMemories));
+        try {
+          localStorage.setItem(MEMORIES_CACHE_KEY, JSON.stringify(previousMemories));
+        } catch (e) { /* ignore */ }
         alert("Gagal menghapus kenangan.");
       }
     }
