@@ -4,6 +4,7 @@ import { PhotoCard } from './components/PhotoCard';
 import { AddMemoryModal } from './components/AddMemoryModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { MemoryViewer } from './components/MemoryViewer';
+import { EditMemoryModal } from './components/EditMemoryModal';
 import { Memory } from './types';
 import { api } from './services/api';
 
@@ -22,6 +23,7 @@ function App() {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null); // State for expanded view
+  const [editingMemory, setEditingMemory] = useState<Memory | null>(null); // State for editing
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -141,6 +143,32 @@ function App() {
       alert("Gagal menyimpan kenangan. Silakan coba lagi.");
     }
   };
+
+  // --- Editing Functions ---
+  const handleEditClick = (memory: Memory) => {
+    setEditingMemory(memory);
+  };
+
+  const handleUpdateMemory = async (id: string, title: string, description: string) => {
+    // Optimistic UI Update
+    const oldMemories = [...memories];
+    const updatedMemories = memories.map(m => 
+      m.id === id ? { ...m, title, description } : m
+    );
+    
+    setMemories(updatedMemories);
+    localStorage.setItem(MEMORIES_CACHE_KEY, JSON.stringify(updatedMemories));
+
+    const success = await api.updateMemory(id, title, description);
+    
+    if (!success) {
+      // Revert if API fails
+      setMemories(oldMemories);
+      localStorage.setItem(MEMORIES_CACHE_KEY, JSON.stringify(oldMemories));
+      alert("Gagal memperbarui kenangan.");
+    }
+  };
+  // -------------------------
 
   const handleDeleteClick = (id: string) => {
     setDeleteId(id);
@@ -343,6 +371,7 @@ function App() {
                   memory={memory} 
                   onDelete={handleDeleteClick}
                   onView={setSelectedMemory}
+                  onEdit={handleEditClick}
                 />
               ))}
             </div>
@@ -367,6 +396,13 @@ function App() {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         onAdd={handleAddMemory} 
+      />
+
+      <EditMemoryModal
+        isOpen={!!editingMemory}
+        onClose={() => setEditingMemory(null)}
+        onUpdate={handleUpdateMemory}
+        memory={editingMemory}
       />
 
       <ConfirmModal 

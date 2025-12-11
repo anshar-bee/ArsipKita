@@ -38,6 +38,28 @@ export const api = {
     }
   },
 
+  updateMemory: async (id: string, title: string, description: string): Promise<boolean> => {
+    try {
+      const payload = {
+        action: 'update',
+        id: id,
+        title: title,
+        description: description
+      };
+
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+      return result.status === 'success';
+    } catch (error) {
+      console.error("Error updating memory:", error);
+      return false;
+    }
+  },
+
   deleteMemory: async (id: string): Promise<boolean> => {
     try {
       const payload = {

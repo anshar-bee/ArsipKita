@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { Memory } from '../types';
-import { Maximize2, X } from 'lucide-react';
+import { Maximize2, X, Pencil } from 'lucide-react';
 
 interface PhotoCardProps {
   memory: Memory;
   onDelete: (id: string) => void;
   onView: (memory: Memory) => void;
+  onEdit: (memory: Memory) => void;
 }
 
-export const PhotoCard: React.FC<PhotoCardProps> = ({ memory, onDelete, onView }) => {
+export const PhotoCard: React.FC<PhotoCardProps> = ({ memory, onDelete, onView, onEdit }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   const cardClass = `relative inline-block m-2 md:m-3 transition-transform duration-300 ease-out hover:scale-105 hover:z-10 ${memory.swayClass || ''}`;
@@ -44,6 +45,13 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({ memory, onDelete, onView }
               title="Perbesar"
             >
               <Maximize2 size={14} />
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onEdit(memory); }}
+              className="p-1.5 bg-white/90 dark:bg-slate-800/90 rounded-full shadow-md hover:scale-110 transition-transform text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
+              title="Edit"
+            >
+              <Pencil size={14} />
             </button>
             <button 
               onClick={(e) => { e.stopPropagation(); onDelete(memory.id); }}
